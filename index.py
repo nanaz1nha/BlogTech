@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 ########################
 # Tratamento das rotas #
-########################
+#########################
 
 
 @app.route('/')  # Define a rota para a URL raiz ('/')
