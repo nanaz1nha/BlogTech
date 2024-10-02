@@ -2,6 +2,8 @@
 from flask import Flask, render_template
 # Importa a bilbioteca de acesso ao MySQL
 from flask_mysqldb import MySQL, MySQLdb
+# Importa todas funções dos artigos de `db_articles`
+from functions.db_articles import *
 
 # Cria uma instância da aplicação Flask
 app = Flask(__name__)
@@ -23,7 +25,7 @@ mysql = MySQL(app)
 @app.route('/')  # Define a rota para a URL raiz ('/')
 def home():  # Função executada quando '/' é acessado
 
-
+    articles = get_all(mysql)
 
     # Debug: mostra o resultado no console
     # print('\n\n\n',articles, '\n\n\n')
@@ -44,10 +46,18 @@ def home():  # Função executada quando '/' é acessado
     # Passa a variável local `toPage` para o template como `page`
     return render_template('home.html', page=toPage)
 
+
 # Rota que exibe o artigo completo
 @app.route('/view/<artid>')
 def view(artid):
-    return artid
+
+    toPage = {
+        'title': '',
+        'css': 'view.css'
+    }
+
+    return render_template('view.html', page=toPage)
+
 
 @app.route('/contacts')  # Define a rota para a URL '/contatos'
 def contacts():  # Função executada quando '/contacts' é acessado

@@ -1,4 +1,5 @@
-from flask_mysqldb import MySQL, MySQLdb
+from flask_mysqldb import MySQLdb
+
 
 def get_all(mysql,):
 
@@ -23,3 +24,5 @@ def get_all(mysql,):
     cur.execute(sql)
     articles = cur.fetchall()
     cur.close()
+
+    return articles 
