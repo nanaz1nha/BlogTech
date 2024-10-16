@@ -15,10 +15,10 @@ def save_contact(mysql, form):
     '''
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     cur.execute(sql, (
-        form['name'],
-        form['email'],
-        form['subject'],
-        form['message'],
+        form['id'],         # Id do artigo
+        form['name'],       # nome do autor do comentário
+        form['email'],      # email do autor do comentário
+        form['comment'],    # comentário
     ))
     mysql.connection.commit()
     cur.close()

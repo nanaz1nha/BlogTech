@@ -1,12 +1,11 @@
 # Importa a classe Flask do módulo flask
-from flask import Flask, render_template, request
+from flask import Flask, redirect, render_template, request, url_for
 # Importa a bilbioteca de acesso ao MySQL
-from flask_mysqldb import MySQL, MySQLdb
+from flask_mysqldb import MySQL
 # Importa todas funções dos artigos de `db_articles`
 from functions.db_articles import *
+from functions.db_comments import *
 from functions.db_contacts import save_contact
-# Envio de e-mails
-from flask_mail import Mail, Message
 
 # Cria uma instância da aplicação Flask
 app = Flask(__name__)
@@ -17,18 +16,8 @@ app.config['MYSQL_USER'] = 'root'       # Nome de usuário do MySQL
 app.config['MYSQL_PASSWORD'] = ''       # Senha do usuário do MySQL
 app.config['MYSQL_DB'] = 'flaskblogdb'  # Nome do banco de dados
 
-# Dados do SMTP
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'jocadasilvajoquinha@gmail.com'
-app.config['MAIL_PASSWORD'] = 'sua_senha'
-
 # Conecta o Python ao MySQL → `mysql` é a conexão com o banco de dados
 mysql = MySQL(app)
-
-# Cria o objeto de e-mail
-mail = Mail(app)
 
 ########################
 # Tratamento das rotas #
@@ -50,7 +39,7 @@ def home():  # Função executada quando '/' é acessado
         # Nome da folha de estilos desta página (opcional)
         'css': 'home.css',
         # Nome do JavaScript desta página (opcional)
-        'js': 'home.js',
+        # 'js': 'home.js',
         # Outros pares "chave" : "valor" entram aqui
         'articles': articles
     }
@@ -63,6 +52,9 @@ def home():  # Função executada quando '/' é acessado
 # Rota que exibe o artigo completo
 @app.route('/view/<artid>')
 def view(artid):
+
+    # Obtém a variável 'ac' para mostrar feedback
+    ac = request.args.get('ac')
 
     # Se o Id do artigo não é um número, exibe erro 404
     if not artid.isdigit():
@@ -94,24 +86,39 @@ def view(artid):
         case _:
             article['sta_typebr'] = 'Colaborador'
 
+    # Primeiro nome do autor
+    article['sta_firstname'] = article['sta_name'].split()[0]
+
+    # Obtém todos os comentários do artigo
+    comments = get_all_comments(mysql, article['art_id'])
+
+    # Total de comentários
+    total_comments = len(comments)
+
+    # DEBUG → Comentários
+    # print('\n\n\n', comments, '\n\n\n')
+
     toPage = {
         'title': '',
         'css': 'view.css',
-        'article': article,  # Passa o artigo para a view.html
-        'articles': articles
+        'article': article,     # Passa o artigo para a view.html
+        'articles': articles,   # Lista de outros artigos do autor
+        'action': ac,           # Feedback de envio do comentário
+        'comments': comments,   # Todos os comentários deste artigo
+        'total_comments': total_comments # Total de comentários
     }
 
     return render_template('view.html', page=toPage)
 
 
-# Define a rota para a URL '/contatos'
+# Define a rota para a URL '/contatos' usando métodos GET e POST
 @app.route('/contacts', methods=['GET', 'POST'])
 def contacts():  # Função executada quando '/contacts' é acessado
 
-    # Formulário não enviado
+    # Formulário não enviado por padrão
     success = False
 
-    # Primeiro nome do remetente
+    # Primeiro nome do remetente em branco
     first = ''
 
     # Se o formulário foi enviado
@@ -120,6 +127,7 @@ def contacts():  # Função executada quando '/contacts' é acessado
         # Recebe os dados do front-end (form)
         form = dict(request.form)
 
+        # DEBUG → Testa de os dados do form foram recebidos
         # print('\n\n\n', form, '\n\n\n')
 
         # Salva contato no banco de dados
@@ -127,18 +135,6 @@ def contacts():  # Função executada quando '/contacts' é acessado
 
         # Obtém o primeiro nome do remetente
         first = form['name'].split()[0]
-
-        # Envia e-mail para o ADM
-        subject = form['subject']
-        body = form['message']
-        recipient = 'admin@flaskblo.com'  # Destinatário
-
-        msg = Message(
-            subject, sender=app.config['MAIL_USERNAME'], recipients=[recipient])
-        msg.body = f'Olá Admin! \n\n Você recebeu um novo contato do site:\n\n{
-            body}'
-
-        mail.send(msg)
 
     # Variável da página HTML
     toPage = {
@@ -161,6 +157,22 @@ def page_not_found(e):
         'css': '404.css'
     }
     return render_template('404.html', page=toPage), 404
+
+
+@app.route('/comment', methods=['POST'])
+def comment():
+
+    # Recebe dados do formulário
+    form = dict(request.form)
+
+    # Teste de mesa
+    # print('\n\n\n', form, '\n\n\n')
+
+    # Salva o comentário
+    save_comment(mysql, form)
+
+    # Retorna para a visualização do artigo
+    return redirect(url_for('view', artid=form['id'], ac='commented'))
 
 
 # Verifica se o script está sendo executado diretamente
